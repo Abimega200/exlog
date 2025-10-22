@@ -3,7 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'transaction_details_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final List<Map<String, dynamic>> transactions;
+
+  const HomeScreen({super.key, required this.transactions});
 
   @override
   Widget build(BuildContext context) {
@@ -191,30 +193,6 @@ class HomeScreen extends StatelessWidget {
   }
 
   List<Widget> _buildTransactionList(BuildContext context) {
-    final transactions = [
-      {
-        'icon': Icons.work_outline,
-        'title': 'Upwork',
-        'date': 'Jan 15, 2022',
-        'amount': '+ \$850.00',
-        'isIncome': true,
-      },
-      {
-        'icon': Icons.account_balance_wallet_outlined,
-        'title': 'Paypal',
-        'date': 'Jan 14, 2022',
-        'amount': '+ \$1,406.00',
-        'isIncome': true,
-      },
-      {
-        'icon': Icons.play_circle_outline,
-        'title': 'Youtube',
-        'date': 'Jan 13, 2022',
-        'amount': '- \$11.00',
-        'isIncome': false,
-      },
-    ];
-
     return transactions.map((transaction) {
       return GestureDetector(
         onTap: () {

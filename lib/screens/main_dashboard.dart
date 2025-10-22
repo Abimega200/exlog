@@ -16,11 +16,41 @@ class _MainDashboardState extends State<MainDashboard> {
   // Index into _screens (does not include the Wallet item)
   int _currentScreenIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const StatisticsScreen(),
-    const ProfileScreen(),
+  final List<Map<String, dynamic>> _transactions = [
+    {
+      'icon': Icons.work_outline,
+      'title': 'Upwork',
+      'date': 'Jan 15, 2022',
+      'amount': '+ \$850.00',
+      'isIncome': true,
+    },
+    {
+      'icon': Icons.account_balance_wallet_outlined,
+      'title': 'Paypal',
+      'date': 'Jan 14, 2022',
+      'amount': '+ \$1,406.00',
+      'isIncome': true,
+    },
+    {
+      'icon': Icons.play_circle_outline,
+      'title': 'Youtube',
+      'date': 'Jan 13, 2022',
+      'amount': '- \$11.00',
+      'isIncome': false,
+    },
   ];
+
+  late List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      HomeScreen(transactions: _transactions),
+      const StatisticsScreen(),
+      const ProfileScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -83,11 +113,19 @@ class _MainDashboardState extends State<MainDashboard> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final result = await Navigator.push<Map<String, dynamic>>(
             context,
-            MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
+            MaterialPageRoute(
+              builder: (context) => const AddExpenseScreen(),
+            ),
           );
+          if (result != null) {
+            setState(() {
+              _transactions.insert(0, result);
+              _screens[0] = HomeScreen(transactions: _transactions);
+            });
+          }
         },
         backgroundColor: const Color(0xFF2196F3),
         child: const Icon(Icons.add, color: Colors.white),
