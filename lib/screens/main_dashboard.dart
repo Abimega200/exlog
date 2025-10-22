@@ -16,16 +16,42 @@ class _MainDashboardState extends State<MainDashboard> {
   // Index into _screens (does not include the Wallet item)
   int _currentScreenIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const StatisticsScreen(),
-    const ProfileScreen(),
+  final List<Map<String, dynamic>> _transactions = <Map<String, dynamic>>[
+    {
+      'icon': Icons.work_outline,
+      'title': 'Upwork',
+      'date': DateTime(2022, 1, 15),
+      'amount': 850.00,
+      'isIncome': true,
+      'notes': 'Upwork Escrow',
+    },
+    {
+      'icon': Icons.account_balance_wallet_outlined,
+      'title': 'Paypal',
+      'date': DateTime(2022, 1, 14),
+      'amount': 1406.00,
+      'isIncome': true,
+      'notes': 'Transfer',
+    },
+    {
+      'icon': Icons.play_circle_outline,
+      'title': 'Youtube',
+      'date': DateTime(2022, 1, 13),
+      'amount': 11.00,
+      'isIncome': false,
+      'notes': 'Subscription',
+    },
   ];
 
   @override
   Widget build(BuildContext context) {
+    final Widget body = _currentScreenIndex == 0
+        ? HomeScreen(transactions: _transactions)
+        : _currentScreenIndex == 1
+            ? const StatisticsScreen()
+            : const ProfileScreen();
     return Scaffold(
-      body: _screens[_currentScreenIndex],
+      body: body,
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
         // Map the selected screen index to nav index, skipping the Wallet item (index 1)
@@ -83,11 +109,22 @@ class _MainDashboardState extends State<MainDashboard> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final result = await Navigator.push<Map<String, dynamic>>(
             context,
             MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
           );
+          if (result != null) {
+            setState(() {
+              _transactions.add(result);
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Transaction added'),
+                backgroundColor: Color(0xFF4CAF50),
+              ),
+            );
+          }
         },
         backgroundColor: const Color(0xFF2196F3),
         child: const Icon(Icons.add, color: Colors.white),

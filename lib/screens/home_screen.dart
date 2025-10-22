@@ -1,12 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'transaction_details_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+  final List<Map<String, dynamic>> transactions;
+
+  const HomeScreen({super.key, required this.transactions});
 
   @override
   Widget build(BuildContext context) {
+    // Calculate balances based on provided transactions
+    final double totalIncome = transactions
+        .where((t) => (t['isIncome'] as bool? ?? false))
+        .fold<double>(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+
+    final double totalExpenses = transactions
+        .where((t) => !(t['isIncome'] as bool? ?? false))
+        .fold<double>(0.0, (sum, t) => sum + ((t['amount'] as num?)?.toDouble() ?? 0.0));
+
+    final double totalBalance = totalIncome - totalExpenses;
+
+    String _fmtCurrency(double value) => value.toStringAsFixed(2);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
@@ -85,7 +101,8 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '\$2,548.00',
+                      '
+\$${_fmtCurrency(totalBalance)}',
                       style: GoogleFonts.inter(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
@@ -98,7 +115,7 @@ class HomeScreen extends StatelessWidget {
                         Expanded(
                           child: _buildBalanceItem(
                             'Income',
-                            '\$1,840.00',
+                            '+ \$${_fmtCurrency(totalIncome)}',
                             Icons.trending_up,
                             const Color(0xFF4CAF50),
                           ),
@@ -107,7 +124,7 @@ class HomeScreen extends StatelessWidget {
                         Expanded(
                           child: _buildBalanceItem(
                             'Expenses',
-                            '\$284.00',
+                            '- \$${_fmtCurrency(totalExpenses)}',
                             Icons.trending_down,
                             const Color(0xFFF44336),
                           ),
@@ -191,48 +208,43 @@ class HomeScreen extends StatelessWidget {
   }
 
   List<Widget> _buildTransactionList(BuildContext context) {
-    final transactions = [
-      {
-        'icon': Icons.work_outline,
-        'title': 'Upwork',
-        'date': 'Jan 15, 2022',
-        'amount': '+ \$850.00',
-        'isIncome': true,
-      },
-      {
-        'icon': Icons.account_balance_wallet_outlined,
-        'title': 'Paypal',
-        'date': 'Jan 14, 2022',
-        'amount': '+ \$1,406.00',
-        'isIncome': true,
-      },
-      {
-        'icon': Icons.play_circle_outline,
-        'title': 'Youtube',
-        'date': 'Jan 13, 2022',
-        'amount': '- \$11.00',
-        'isIncome': false,
-      },
-    ];
+    final List<Map<String, dynamic>> sorted = List<Map<String, dynamic>>.from(transactions);
+    sorted.sort((a, b) {
+      final aDate = (a['date'] is DateTime)
+          ? (a['date'] as DateTime)
+          : DateTime.tryParse(a['date']?.toString() ?? '') ?? DateTime(1970);
+      final bDate = (b['date'] is DateTime)
+          ? (b['date'] as DateTime)
+          : DateTime.tryParse(b['date']?.toString() ?? '') ?? DateTime(1970);
+      return bDate.compareTo(aDate);
+    });
 
-    return transactions.map((transaction) {
+    return sorted.map((transaction) {
+      final bool isIncome = transaction['isIncome'] as bool? ?? false;
+      final double amount = ((transaction['amount'] as num?)?.toDouble() ?? 0.0);
+      final String amountStr = '${isIncome ? '+' : '-'} \$${amount.toStringAsFixed(2)}';
+      final DateTime date = (transaction['date'] is DateTime)
+          ? (transaction['date'] as DateTime)
+          : DateTime.tryParse(transaction['date']?.toString() ?? '') ?? DateTime.now();
+      final IconData icon = (transaction['icon'] is IconData)
+          ? transaction['icon'] as IconData
+          : Icons.account_balance_wallet_outlined;
+
       return GestureDetector(
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => TransactionDetailsScreen(
-                isIncome: transaction['isIncome'] as bool,
-                amount: transaction['amount'] as String,
-                title: transaction['title'] as String,
-                fromTo: transaction['isIncome'] as bool
-                    ? 'Upwork Escrow'
-                    : 'Claire Jkwaki',
-                date: DateTime(2022, 2, 28),
-                time: transaction['isIncome'] as bool ? '10:00 AM' : '04:00 PM',
-                earnings: transaction['isIncome'] as bool ? 870.0 : 85.0,
-                fee: transaction['isIncome'] as bool ? 20.0 : 0.0,
-                total: transaction['isIncome'] as bool ? 850.0 : 85.0,
+                isIncome: isIncome,
+                amount: amountStr,
+                title: transaction['title'] as String? ?? 'Transaction',
+                fromTo: transaction['notes'] as String? ?? (isIncome ? 'Incoming' : 'Outgoing'),
+                date: date,
+                time: DateFormat('hh:mm a').format(date),
+                earnings: isIncome ? amount : 0.0,
+                fee: 0.0,
+                total: amount,
               ),
             ),
           );
@@ -259,11 +271,7 @@ class HomeScreen extends StatelessWidget {
                   color: const Color(0xFF2196F3).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  transaction['icon'] as IconData,
-                  color: const Color(0xFF2196F3),
-                  size: 24,
-                ),
+                child: Icon(icon, color: const Color(0xFF2196F3), size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -271,7 +279,7 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      transaction['title'] as String,
+                      transaction['title'] as String? ?? 'Transaction',
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -280,7 +288,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      transaction['date'] as String,
+                      DateFormat('MMM dd, yyyy').format(date),
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: const Color(0xFF666666),
@@ -293,21 +301,21 @@ class HomeScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    transaction['amount'] as String,
+                    amountStr,
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: transaction['isIncome'] as bool
+                      color: isIncome
                           ? const Color(0xFF4CAF50)
                           : const Color(0xFFF44336),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Icon(
-                    transaction['isIncome'] as bool
+                    isIncome
                         ? Icons.trending_up
                         : Icons.trending_down,
-                    color: transaction['isIncome'] as bool
+                    color: isIncome
                         ? const Color(0xFF4CAF50)
                         : const Color(0xFFF44336),
                     size: 16,
