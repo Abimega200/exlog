@@ -101,8 +101,7 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '
-\$${_fmtCurrency(totalBalance)}',
+                      '\$${_fmtCurrency(totalBalance)}',
                       style: GoogleFonts.inter(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
