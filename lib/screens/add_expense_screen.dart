@@ -235,18 +235,21 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       child: ElevatedButton(
                         onPressed: () {
                           if (_formKey.currentState!.validate()) {
-                            // Show success message
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  _selectedType == 0
-                                      ? 'Income added successfully!'
-                                      : 'Expense added successfully!',
-                                ),
-                                backgroundColor: const Color(0xFF4CAF50),
-                              ),
-                            );
-                            Navigator.pop(context);
+                            final bool isIncome = _selectedType == 0;
+                            final double amount =
+                                double.tryParse(_amountController.text) ?? 0.0;
+                            final newTransaction = <String, dynamic>{
+                              'icon': isIncome
+                                  ? Icons.trending_up
+                                  : Icons.local_mall_outlined,
+                              'title': _selectedCategory,
+                              'date': _selectedDate,
+                              'amount': amount,
+                              'isIncome': isIncome,
+                              'notes': _notesController.text.trim(),
+                            };
+                            Navigator.pop<Map<String, dynamic>>(
+                                context, newTransaction);
                           }
                         },
                         child: Text(
