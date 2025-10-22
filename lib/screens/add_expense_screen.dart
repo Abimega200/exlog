@@ -246,7 +246,19 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                                 backgroundColor: const Color(0xFF4CAF50),
                               ),
                             );
-                            Navigator.pop(context);
+                            final bool isIncome = _selectedType == 0;
+                            final String formattedAmount =
+                                "${isIncome ? '+ ' : '- '}\$${_amountController.text}";
+                            // Return new transaction to the previous screen
+                            Navigator.pop<Map<String, dynamic>>(context, {
+                              'icon': isIncome
+                                  ? Icons.trending_up
+                                  : Icons.trending_down,
+                              'title': _selectedCategory,
+                              'date': DateFormat('MMM dd, yyyy').format(_selectedDate),
+                              'amount': formattedAmount,
+                              'isIncome': isIncome,
+                            });
                           }
                         },
                         child: Text(
