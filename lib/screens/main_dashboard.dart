@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'statistics_screen.dart';
 import 'profile_screen.dart';
-import 'add_expense_screen.dart';
+import 'add_transaction_screen.dart';
 import 'wallet_screen.dart';
 
 class MainDashboard extends StatefulWidget {
@@ -73,11 +73,19 @@ class _MainDashboardState extends State<MainDashboard> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          final added = await Navigator.push<bool>(
             context,
-            MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
+            MaterialPageRoute(builder: (context) => const AddTransactionScreen()),
           );
+          if (added == true && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ Transaction added successfully'),
+                backgroundColor: Color(0xFF4CAF50),
+              ),
+            );
+          }
         },
         backgroundColor: const Color(0xFF2196F3),
         child: const Icon(Icons.add, color: Colors.white),
