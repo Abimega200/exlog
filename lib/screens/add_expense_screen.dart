@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../models/transaction.dart';
+import '../state/wallet_notifier.dart';
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
@@ -233,8 +235,18 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           if (_formKey.currentState!.validate()) {
+                            final amount = double.parse(_amountController.text);
+                            final isIncome = _selectedType == 0;
+                            final entry = TransactionEntry(
+                              isIncome: isIncome,
+                              amount: amount,
+                              category: _selectedCategory,
+                              notes: _notesController.text.trim(),
+                              date: _selectedDate,
+                            );
+                            await WalletNotifier.instance.addEntry(entry);
                             // Show success message
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
