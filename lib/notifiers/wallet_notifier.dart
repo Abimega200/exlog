@@ -1,51 +1,49 @@
-import 'dart:async';
+import 'package:flutter/foundation.dart';
 
 import '../models/wallet_transaction.dart';
 import '../services/storage_service.dart';
 
-class WalletTotals {
-  final double totalIncome;
-  final double totalExpense;
-  final double balance;
-
-  const WalletTotals({
-    required this.totalIncome,
-    required this.totalExpense,
-    required this.balance,
-  });
-}
-
-class WalletNotifier {
+class WalletNotifier extends ChangeNotifier {
   final StorageService _storage;
-  final StreamController<WalletTotals> _totalsController =
-      StreamController<WalletTotals>.broadcast();
 
   WalletNotifier(this._storage);
 
-  Stream<WalletTotals> get totalsStream => _totalsController.stream;
+  List<WalletTransaction> _transactions = [];
+  double _totalIncome = 0;
+  double _totalExpense = 0;
+
+  List<WalletTransaction> get transactions => List.unmodifiable(_transactions);
+  double get totalIncome => _totalIncome;
+  double get totalExpense => _totalExpense;
+  double get balance => _totalIncome - _totalExpense;
 
   Future<void> refresh() async {
-    final items = await _storage.getTransactions();
+    _transactions = await _storage.getTransactions();
+    _recalculateTotals();
+    notifyListeners();
+  }
+
+  Future<void> addTransaction(WalletTransaction tx) async {
+    await _storage.addTransaction(tx);
+    await refresh();
+  }
+
+  Future<void> clearAll() async {
+    await _storage.clearAll();
+    await refresh();
+  }
+
+  void _recalculateTotals() {
     double income = 0;
     double expense = 0;
-    for (final tx in items) {
+    for (final tx in _transactions) {
       if (tx.type == TransactionType.income) {
         income += tx.amount;
       } else {
         expense += tx.amount;
       }
     }
-    final balance = income - expense;
-    _totalsController.add(
-      WalletTotals(
-        totalIncome: income,
-        totalExpense: expense,
-        balance: balance,
-      ),
-    );
-  }
-
-  void dispose() {
-    _totalsController.close();
+    _totalIncome = income;
+    _totalExpense = expense;
   }
 }

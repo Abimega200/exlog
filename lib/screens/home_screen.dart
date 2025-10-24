@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import '../models/wallet_transaction.dart';
+import '../notifiers/wallet_notifier.dart';
+import 'add_transaction_screen.dart';
 import 'transaction_details_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -9,6 +15,18 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddTransactionScreen(),
+            ),
+          );
+        },
+        backgroundColor: const Color(0xFF2196F3),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
@@ -60,62 +78,66 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 30),
-              // Balance Summary Card
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Total Balance',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        color: const Color(0xFF666666),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '\$2,548.00',
-                      style: GoogleFonts.inter(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF333333),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildBalanceItem(
-                            'Income',
-                            '\$1,840.00',
-                            Icons.trending_up,
-                            const Color(0xFF4CAF50),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildBalanceItem(
-                            'Expenses',
-                            '\$284.00',
-                            Icons.trending_down,
-                            const Color(0xFFF44336),
-                          ),
+              // Balance Summary Card (reactive)
+              Consumer<WalletNotifier>(
+                builder: (context, wallet, _) {
+                  return Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Total Balance',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            color: const Color(0xFF666666),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _fmt(wallet.balance),
+                          style: GoogleFonts.inter(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF333333),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildBalanceItem(
+                                'Income',
+                                _fmt(wallet.totalIncome),
+                                Icons.trending_up,
+                                const Color(0xFF4CAF50),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildBalanceItem(
+                                'Expenses',
+                                _fmt(wallet.totalExpense),
+                                Icons.trending_down,
+                                const Color(0xFFF44336),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 30),
               // Transactions History Header
@@ -144,8 +166,24 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 16),
-              // Transactions List
-              ..._buildTransactionList(context),
+              // Transactions List (reactive)
+              Consumer<WalletNotifier>(
+                builder: (context, wallet, _) {
+                  final txs = wallet.transactions.reversed.toList();
+                  if (txs.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(
+                        'No transactions yet. Tap + to add one.',
+                        style: GoogleFonts.inter(color: const Color(0xFF666666)),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: txs.map((tx) => _transactionTile(context, tx)).toList(),
+                  );
+                },
+              ),
             ],
           ),
         ),
@@ -190,134 +228,99 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  List<Widget> _buildTransactionList(BuildContext context) {
-    final transactions = [
-      {
-        'icon': Icons.work_outline,
-        'title': 'Upwork',
-        'date': 'Jan 15, 2022',
-        'amount': '+ \$850.00',
-        'isIncome': true,
+  Widget _transactionTile(BuildContext context, WalletTransaction tx) {
+    final isIncome = tx.type == TransactionType.income;
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TransactionDetailsScreen(transaction: tx),
+          ),
+        );
       },
-      {
-        'icon': Icons.account_balance_wallet_outlined,
-        'title': 'Paypal',
-        'date': 'Jan 14, 2022',
-        'amount': '+ \$1,406.00',
-        'isIncome': true,
-      },
-      {
-        'icon': Icons.play_circle_outline,
-        'title': 'Youtube',
-        'date': 'Jan 13, 2022',
-        'amount': '- \$11.00',
-        'isIncome': false,
-      },
-    ];
-
-    return transactions.map((transaction) {
-      return GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TransactionDetailsScreen(
-                isIncome: transaction['isIncome'] as bool,
-                amount: transaction['amount'] as String,
-                title: transaction['title'] as String,
-                fromTo: transaction['isIncome'] as bool
-                    ? 'Upwork Escrow'
-                    : 'Claire Jkwaki',
-                date: DateTime(2022, 2, 28),
-                time: transaction['isIncome'] as bool ? '10:00 AM' : '04:00 PM',
-                earnings: transaction['isIncome'] as bool ? 870.0 : 85.0,
-                fee: transaction['isIncome'] as bool ? 20.0 : 0.0,
-                total: transaction['isIncome'] as bool ? 850.0 : 85.0,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                isIncome ? Icons.work_outline : Icons.shopping_bag_outlined,
+                color: const Color(0xFF2196F3),
+                size: 24,
               ),
             ),
-          );
-        },
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  transaction['icon'] as IconData,
-                  color: const Color(0xFF2196F3),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      transaction['title'] as String,
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF333333),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      transaction['date'] as String,
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: const Color(0xFF666666),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    transaction['amount'] as String,
+                    tx.category,
                     style: GoogleFonts.inter(
                       fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: transaction['isIncome'] as bool
-                          ? const Color(0xFF4CAF50)
-                          : const Color(0xFFF44336),
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF333333),
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Icon(
-                    transaction['isIncome'] as bool
-                        ? Icons.trending_up
-                        : Icons.trending_down,
-                    color: transaction['isIncome'] as bool
-                        ? const Color(0xFF4CAF50)
-                        : const Color(0xFFF44336),
-                    size: 16,
+                  Text(
+                    DateFormat('MMM dd, yyyy').format(tx.date),
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      color: const Color(0xFF666666),
+                    ),
                   ),
                 ],
               ),
-            ],
-          ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  (isIncome ? '+ ' : '- ') + _fmt(tx.amount),
+                  style: GoogleFonts.inter(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isIncome
+                        ? const Color(0xFF4CAF50)
+                        : const Color(0xFFF44336),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Icon(
+                  isIncome ? Icons.trending_up : Icons.trending_down,
+                  color:
+                      isIncome ? const Color(0xFF4CAF50) : const Color(0xFFF44336),
+                  size: 16,
+                ),
+              ],
+            ),
+          ],
         ),
-      );
-    }).toList();
+      ),
+    );
+  }
+
+  static String _fmt(double value) {
+    final formatter = NumberFormat.currency(symbol: '\$', decimalDigits: 2);
+    return formatter.format(value);
   }
 }

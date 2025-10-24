@@ -1,29 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../models/wallet_transaction.dart';
+import '../services/pdf_service.dart';
 
 class TransactionDetailsScreen extends StatelessWidget {
-  final bool isIncome;
-  final String amount;
-  final String title;
-  final String fromTo;
-  final DateTime date;
-  final String time;
-  final double earnings;
-  final double fee;
-  final double total;
+  final WalletTransaction transaction;
 
   const TransactionDetailsScreen({
     super.key,
-    required this.isIncome,
-    required this.amount,
-    required this.title,
-    required this.fromTo,
-    required this.date,
-    required this.time,
-    required this.earnings,
-    required this.fee,
-    required this.total,
+    required this.transaction,
   });
 
   @override
@@ -59,7 +45,7 @@ class TransactionDetailsScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 40),
-              // Amount Card
+              // Amount Card (with blue header background style)
               Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
@@ -77,7 +63,7 @@ class TransactionDetailsScreen extends StatelessWidget {
                   children: [
                     // Amount
                     Text(
-                      amount,
+                      (transaction.type == TransactionType.income ? '+ ' : '- ') + _fmt(transaction.amount),
                       style: GoogleFonts.inter(
                         fontSize: 36,
                         fontWeight: FontWeight.bold,
@@ -90,19 +76,19 @@ class TransactionDetailsScreen extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(
-                          isIncome ? Icons.trending_up : Icons.trending_down,
-                          color: isIncome
+                          transaction.type == TransactionType.income ? Icons.trending_up : Icons.trending_down,
+                          color: transaction.type == TransactionType.income
                               ? const Color(0xFF4CAF50)
                               : const Color(0xFFF44336),
                           size: 24,
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          isIncome ? 'Income' : 'Expense',
+                          transaction.type == TransactionType.income ? 'Income' : 'Expense',
                           style: GoogleFonts.inter(
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
-                            color: isIncome
+                            color: transaction.type == TransactionType.income
                                 ? const Color(0xFF4CAF50)
                                 : const Color(0xFFF44336),
                           ),
@@ -139,29 +125,20 @@ class TransactionDetailsScreen extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    _buildDetailRow('Status', isIncome ? 'Income' : 'Expense'),
+                    _buildDetailRow('Status', transaction.type == TransactionType.income ? 'Income' : 'Expense'),
                     _buildDivider(),
-                    _buildDetailRow(isIncome ? 'From' : 'To', fromTo),
+                    _buildDetailRow(transaction.type == TransactionType.income ? 'From' : 'To', transaction.counterparty),
                     _buildDivider(),
-                    _buildDetailRow('Time', time),
+                    _buildDetailRow('Time', DateFormat('hh:mm a').format(transaction.date)),
                     _buildDivider(),
                     _buildDetailRow(
                       'Date',
-                      DateFormat('MMM dd, yyyy').format(date),
+                      DateFormat('MMM dd, yyyy').format(transaction.date),
                     ),
                     _buildDivider(),
-                    _buildDetailRow(
-                      isIncome ? 'Earnings' : 'Spending',
-                      '\$${earnings.toStringAsFixed(2)}',
-                    ),
+                    _buildDetailRow('Category', transaction.category),
                     _buildDivider(),
-                    _buildDetailRow('Fee', '\$${fee.toStringAsFixed(2)}'),
-                    _buildDivider(),
-                    _buildDetailRow(
-                      'Total',
-                      '\$${total.toStringAsFixed(2)}',
-                      isTotal: true,
-                    ),
+                    _buildDetailRow('Description', transaction.description.isEmpty ? '-' : transaction.description),
                   ],
                 ),
               ),
@@ -171,13 +148,10 @@ class TransactionDetailsScreen extends StatelessWidget {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Receipt downloaded successfully!'),
-                        backgroundColor: Color(0xFF4CAF50),
-                      ),
-                    );
+                  onPressed: () async {
+                    final pdf = PdfService();
+                    final file = await pdf.generateReceipt(transaction);
+                    await pdf.openFile(file);
                   },
                   child: Text(
                     'Download Receipt',

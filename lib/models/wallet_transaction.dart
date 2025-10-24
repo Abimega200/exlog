@@ -18,6 +18,7 @@ class WalletTransaction {
   final double amount;
   final String category;
   final String description;
+  final String counterparty; // source/destination
   final DateTime date;
 
   WalletTransaction({
@@ -26,6 +27,7 @@ class WalletTransaction {
     required this.amount,
     required this.category,
     required this.description,
+    required this.counterparty,
     required this.date,
   });
 
@@ -35,6 +37,7 @@ class WalletTransaction {
         'amount': amount,
         'category': category,
         'description': description,
+        'counterparty': counterparty,
         'date': date.toIso8601String(),
       };
 
@@ -45,6 +48,7 @@ class WalletTransaction {
       amount: (json['amount'] as num).toDouble(),
       category: json['category'] as String,
       description: json['description'] as String? ?? '',
+      counterparty: json['counterparty'] as String? ?? '',
       date: DateTime.parse(json['date'] as String),
     );
   }
