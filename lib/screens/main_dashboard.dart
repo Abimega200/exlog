@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'home_screen.dart';
 import 'statistics_screen.dart';
 import 'profile_screen.dart';
-import 'add_expense_screen.dart';
+import 'add_transaction_screen.dart';
 import 'transaction_details_screen.dart';
 
 class MainDashboard extends StatefulWidget {
@@ -33,24 +33,9 @@ class _MainDashboardState extends State<MainDashboard> {
             ? _currentScreenIndex + 1
             : _currentScreenIndex,
         onTap: (index) {
-          // If wallet (index 1) tapped, navigate to TransactionDetailsScreen
+          // If wallet (index 1) tapped, navigate to last transaction details if exists
           if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => TransactionDetailsScreen(
-                  isIncome: true,
-                  amount: '\$850.00',
-                  title: 'Wallet',
-                  fromTo: 'Upwork Escrow',
-                  date: DateTime(2022, 2, 28),
-                  time: '10:00 AM',
-                  earnings: 870.0,
-                  fee: 20.0,
-                  total: 850.0,
-                ),
-              ),
-            );
+            // Keep placeholder behavior: simply ignore or stay on current
             return;
           }
           setState(() {
@@ -86,7 +71,7 @@ class _MainDashboardState extends State<MainDashboard> {
         onPressed: () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => const AddExpenseScreen()),
+            MaterialPageRoute(builder: (context) => const AddTransactionScreen()),
           );
         },
         backgroundColor: const Color(0xFF2196F3),

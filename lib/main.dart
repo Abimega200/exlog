@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
 import 'screens/splash_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/signup_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'screens/main_dashboard.dart';
+import 'services/locator.dart';
+import 'notifiers/wallet_notifier.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await setupServices();
   runApp(const ExpenseLoggerApp());
 }
 
@@ -16,13 +22,16 @@ class ExpenseLoggerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return ChangeNotifierProvider<WalletNotifier>.value(
+      value: walletNotifier,
+      child: MaterialApp(
       title: 'Expense Logger',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         primaryColor: const Color(0xFF2196F3),
         scaffoldBackgroundColor: Colors.white,
+        useMaterial3: true,
         textTheme: GoogleFonts.interTextTheme(),
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.white,
@@ -58,14 +67,15 @@ class ExpenseLoggerApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const SplashScreen(),
-      routes: {
-        '/onboarding': (context) => const OnboardingScreen(),
-        '/login': (context) => const LoginScreen(),
-        '/signup': (context) => const SignupScreen(),
-        '/forgot-password': (context) => const ForgotPasswordScreen(),
-        '/main': (context) => const MainDashboard(),
-      },
+        home: const SplashScreen(),
+        routes: {
+          '/onboarding': (context) => const OnboardingScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/signup': (context) => const SignupScreen(),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
+          '/main': (context) => const MainDashboard(),
+        },
+      ),
     );
   }
 }
