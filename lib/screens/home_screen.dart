@@ -1,9 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'transaction_details_screen.dart';
+// ignore: unused_import
+import '../screens/transaction_details_screen.dart';
+import '../state/wallet_notifier.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final _notifier = WalletNotifier.instance;
+
+  @override
+  void initState() {
+    super.initState();
+    _notifier.refresh();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -60,62 +75,73 @@ class HomeScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 30),
-              // Balance Summary Card
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      'Total Balance',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        color: const Color(0xFF666666),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '\$2,548.00',
-                      style: GoogleFonts.inter(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF333333),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildBalanceItem(
-                            'Income',
-                            '\$1,840.00',
-                            Icons.trending_up,
-                            const Color(0xFF4CAF50),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildBalanceItem(
-                            'Expenses',
-                            '\$284.00',
-                            Icons.trending_down,
-                            const Color(0xFFF44336),
-                          ),
+              // Balance Summary Card (dynamic)
+              StreamBuilder<WalletState>(
+                stream: _notifier.stream,
+                builder: (context, snapshot) {
+                  final state = snapshot.data ?? const WalletState(
+                    budget: 0,
+                    totalIncome: 0,
+                    totalExpense: 0,
+                  );
+                  final totalBalance = state.totalIncome - state.totalExpense;
+                  return Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                  ],
-                ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Total Balance',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            color: const Color(0xFF666666),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          '₹${totalBalance.toStringAsFixed(2)}',
+                          style: GoogleFonts.inter(
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF333333),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildBalanceItem(
+                                'Income',
+                                '₹${state.totalIncome.toStringAsFixed(2)}',
+                                Icons.trending_up,
+                                const Color(0xFF4CAF50),
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: _buildBalanceItem(
+                                'Expenses',
+                                '₹${state.totalExpense.toStringAsFixed(2)}',
+                                Icons.trending_down,
+                                const Color(0xFFF44336),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: 30),
               // Transactions History Header
@@ -320,4 +346,8 @@ class HomeScreen extends StatelessWidget {
       );
     }).toList();
   }
+}
+
+// ignore: non_constant_identifier_names
+TransactionDetailsScreen({required bool isIncome, required String amount, required String title, required String fromTo, required DateTime date, required String time, required double earnings, required double fee, required double total}) {
 }
