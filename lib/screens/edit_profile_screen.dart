@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'change_password_screen.dart';
+import '../state/profile_provider.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -11,10 +13,16 @@ class EditProfileScreen extends StatefulWidget {
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'Enjelin Morgeana');
-  final _emailController = TextEditingController(
-    text: 'enjelin.morgeana@example.com',
-  );
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+
+  @override
+  void initState() {
+    super.initState();
+    final profileProvider = context.read<ProfileProvider>();
+    _nameController = TextEditingController(text: profileProvider.name);
+    _emailController = TextEditingController(text: profileProvider.email);
+  }
 
   @override
   void dispose() {
@@ -52,56 +60,71 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               ),
               const SizedBox(height: 30),
               // User Info Card
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
+              Consumer<ProfileProvider>(
+                builder: (context, profileProvider, _) {
+                  return Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // Avatar
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 40,
-                        color: Color(0xFF2196F3),
-                      ),
+                    child: Column(
+                      children: [
+                        // Avatar
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF2196F3,
+                            ).withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            size: 40,
+                            color: Color(0xFF2196F3),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Name
+                        Text(
+                          profileProvider.name,
+                          style: GoogleFonts.inter(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF333333),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Email
+                        Text(
+                          profileProvider.email,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            color: const Color(0xFF666666),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        // Handle
+                        Text(
+                          profileProvider.username,
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            color: const Color(0xFF999999),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    // Name
-                    Text(
-                      'Enjelin Morgeana',
-                      style: GoogleFonts.inter(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF333333),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Handle
-                    Text(
-                      '@enjelin.morgeana',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        color: const Color(0xFF666666),
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 30),
               // Edit Form
@@ -231,8 +254,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         const SizedBox(width: 16),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () {
+                            onPressed: () async {
                               if (_formKey.currentState!.validate()) {
+                                final profileProvider = context
+                                    .read<ProfileProvider>();
+                                await profileProvider.updateProfile(
+                                  name: _nameController.text.trim(),
+                                  email: _emailController.text.trim(),
+                                );
+                                if (!mounted) return;
+                                // ignore: use_build_context_synchronously
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text(
@@ -241,7 +272,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     backgroundColor: Color(0xFF4CAF50),
                                   ),
                                 );
-                                Navigator.pop(context);
+                                // ignore: use_build_context_synchronously
+                                Navigator.pop(context, true);
                               }
                             },
                             child: Text(

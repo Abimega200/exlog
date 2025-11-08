@@ -29,42 +29,49 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              // Back button and header
+              // Back button
               Row(
                 children: [
                   IconButton(
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.arrow_back_ios),
                   ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Forgot Password',
-                    style: GoogleFonts.inter(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF333333),
-                    ),
-                  ),
                 ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Enter your registered email to reset your password',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  color: const Color(0xFF666666),
-                ),
-              ),
-              const SizedBox(height: 40),
-              // Blue wave decoration
+              const SizedBox(height: 20),
+              // Blue header with welcome message
               Container(
-                height: 100,
+                height: 120,
                 decoration: const BoxDecoration(
                   color: Color(0xFF2196F3),
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(30),
                     bottomRight: Radius.circular(30),
                   ),
+                ),
+                alignment: Alignment.topCenter,
+                padding: const EdgeInsets.only(top: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Welcome',
+                      style: GoogleFonts.inter(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Forgot password',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 40),
@@ -168,5 +175,3 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     );
   }
 }
-
-

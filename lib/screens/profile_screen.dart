@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'edit_profile_screen.dart';
 import 'delete_account_screen.dart';
+import 'faq_screen.dart';
+import 'help_support_screen.dart';
+import '../state/profile_provider.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -40,56 +44,62 @@ class ProfileScreen extends StatelessWidget {
               ),
               const SizedBox(height: 30),
               // User Info Card
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 20,
-                      offset: const Offset(0, 4),
+              Consumer<ProfileProvider>(
+                builder: (context, profileProvider, _) {
+                  return Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // Avatar
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF2196F3).withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        size: 40,
-                        color: Color(0xFF2196F3),
-                      ),
+                    child: Column(
+                      children: [
+                        // Avatar
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF2196F3,
+                            ).withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.person,
+                            size: 40,
+                            color: Color(0xFF2196F3),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        // Name
+                        Text(
+                          profileProvider.name,
+                          style: GoogleFonts.inter(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF333333),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Email
+                        Text(
+                          profileProvider.email,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            color: const Color(0xFF666666),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    // Name
-                    Text(
-                      'Enjelin Morgeana',
-                      style: GoogleFonts.inter(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: const Color(0xFF333333),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    // Handle
-                    Text(
-                      '@enjelin.morgeana',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        color: const Color(0xFF666666),
-                      ),
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
               const SizedBox(height: 30),
               // Options List
@@ -110,26 +120,41 @@ class ProfileScreen extends StatelessWidget {
                     _buildOptionItem(
                       icon: Icons.person_outline,
                       title: 'Profile Info',
-                      onTap: () {
-                        Navigator.push(
+                      onTap: () async {
+                        await Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) => const EditProfileScreen(),
                           ),
                         );
+                        // Consumer will automatically rebuild when provider notifies
                       },
                     ),
                     _buildDivider(),
                     _buildOptionItem(
                       icon: Icons.help_outline,
                       title: 'FAQs',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FAQScreen(),
+                          ),
+                        );
+                      },
                     ),
                     _buildDivider(),
                     _buildOptionItem(
                       icon: Icons.headset_mic_outlined,
                       title: 'Help & Support',
-                      onTap: () {},
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const HelpSupportScreen(),
+                          ),
+                        );
+                      },
                     ),
                     _buildDivider(),
                     _buildOptionItem(

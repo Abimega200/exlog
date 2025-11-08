@@ -1,8 +1,148 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/services/transaction_details_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import '../state/wallet_notifier.dart';
+
+import '../models/transaction.dart';
+import '../state/transaction_provider.dart';
+import '../utils/format.dart';
+import '../services/notification_service.dart';
+
+/// Custom top banner widget that slides down from the top
+class _BudgetExceededBanner extends StatefulWidget {
+  final VoidCallback onDismiss;
+
+  const _BudgetExceededBanner({required this.onDismiss});
+
+  @override
+  State<_BudgetExceededBanner> createState() => _BudgetExceededBannerState();
+}
+
+class _BudgetExceededBannerState extends State<_BudgetExceededBanner>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<Offset> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0.0, -1.0),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    ));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeOut,
+    ));
+
+    // Start animation
+    _controller.forward();
+
+    // Auto-dismiss after 3 seconds
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted && _controller.status == AnimationStatus.completed) {
+        _controller.reverse().then((_) {
+          if (mounted) {
+            widget.onDismiss();
+          }
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: SlideTransition(
+        position: _slideAnimation,
+        child: FadeTransition(
+          opacity: _fadeAnimation,
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 8,
+                left: 16,
+                right: 16,
+                bottom: 8,
+              ),
+              decoration: const BoxDecoration(
+                color: Color(0xFFDC3545), // Red background
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 8,
+                    offset: Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        '⚠️ Budget limit exceeded for this category!',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      onPressed: () {
+                        _controller.reverse().then((_) {
+                          widget.onDismiss();
+                        });
+                      },
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class AddExpenseScreen extends StatefulWidget {
   const AddExpenseScreen({super.key});
@@ -12,18 +152,16 @@ class AddExpenseScreen extends StatefulWidget {
 }
 
 class _AddExpenseScreenState extends State<AddExpenseScreen> {
-  int _selectedType = 1; // Expense is selected by default
-  final List<String> _types = ['Income', 'Expense'];
-
   final _formKey = GlobalKey<FormState>();
-  final _amountController = TextEditingController(text: '40.00');
-  final _notesController = TextEditingController();
-
-  String _selectedCategory = 'Netflix';
-  DateTime _selectedDate = DateTime.now();
+  TransactionType _type = TransactionType.expense;
+  String _selectedCategory = 'Food & Dining';
+  final TextEditingController _amountCtrl = TextEditingController();
+  final TextEditingController _feeCtrl = TextEditingController(text: '0');
+  final TextEditingController _counterpartyCtrl = TextEditingController();
+  final TextEditingController _notesCtrl = TextEditingController();
+  DateTime _dateTime = DateTime.now();
 
   final List<String> _categories = [
-    'Netflix',
     'Food & Dining',
     'Transportation',
     'Shopping',
@@ -31,359 +169,295 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
     'Bills & Utilities',
     'Healthcare',
     'Education',
+    'Salary',
+    'Freelance',
+    'Investment',
+    'Other',
   ];
+
+  // Fixed budget limits for each category
+  final Map<String, double> _budgetLimits = {
+    'Food & Dining': 5000.0,
+    'Transportation': 2000.0,
+    'Shopping': 4000.0,
+    'Entertainment': 3000.0,
+    'Bills & Utilities': 2500.0,
+    'Healthcare': 1500.0,
+    'Education': 3500.0,
+    'Salary': 0.0, // No limit for income categories
+    'Freelance': 0.0,
+    'Investment': 0.0,
+    'Other': 2000.0,
+  };
 
   @override
   void dispose() {
-    _amountController.dispose();
-    _notesController.dispose();
+    _amountCtrl.dispose();
+    _feeCtrl.dispose();
+    _counterpartyCtrl.dispose();
+    _notesCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickDateTime() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _dateTime,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2100),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(_dateTime),
+    );
+    if (time == null || !mounted) return;
+    setState(() {
+      _dateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        time.hour,
+        time.minute,
+      );
+    });
+  }
+
+  void _showBudgetExceededBanner() {
+    if (!mounted) return;
+
+    // Create overlay entry for the top banner
+    final overlay = Overlay.of(context);
+    late OverlayEntry overlayEntry;
+
+    overlayEntry = OverlayEntry(
+      builder: (context) => _BudgetExceededBanner(
+        onDismiss: () {
+          if (overlayEntry.mounted) {
+            overlayEntry.remove();
+          }
+        },
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+    final provider = context.read<TransactionProvider>();
+    final id = provider.generateId();
+    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    final fee = double.tryParse(_feeCtrl.text.trim()) ?? 0;
+
+    bool budgetExceeded = false;
+
+    // Check budget limit for expenses only
+    if (_type == TransactionType.expense) {
+      final limit = _budgetLimits[_selectedCategory] ?? 0.0;
+      if (limit > 0) {
+        // Calculate total spent for this category
+        final categoryTransactions = provider.transactions
+            .where(
+              (tx) =>
+                  tx.type == TransactionType.expense &&
+                  tx.category == _selectedCategory,
+            )
+            .toList();
+        final totalSpent = categoryTransactions.fold<double>(
+          0.0,
+          (sum, tx) => sum + tx.amount,
+        );
+        final newTotal = totalSpent + amount;
+
+        if (newTotal > limit) {
+          budgetExceeded = true;
+          
+          // Show local notification
+          await NotificationService.showBudgetExceededNotification(
+            _selectedCategory,
+            limit,
+            newTotal,
+          );
+
+          // Show top banner notification
+          if (mounted) {
+            _showBudgetExceededBanner();
+          }
+        }
+      }
+    }
+
+    // Save transaction regardless of budget limit
+    final tx = TransactionModel(
+      id: id,
+      type: _type,
+      category: _selectedCategory,
+      amount: amount,
+      fee: fee,
+      notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
+      counterparty: _counterpartyCtrl.text.trim().isEmpty
+          ? null
+          : _counterpartyCtrl.text.trim(),
+      dateTime: _dateTime,
+    );
+
+    await provider.addTransaction(tx);
+    if (mounted) {
+      // Only show success message if budget wasn't exceeded
+      // (to avoid showing both messages at once)
+      if (!budgetExceeded) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              '${_type == TransactionType.income ? 'Income' : 'Expense'} added successfully!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      Navigator.pop(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios),
-                  ),
-                  Text(
-                    'Add Expense',
-                    style: GoogleFonts.inter(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF333333),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {},
-                    icon: const Icon(Icons.more_vert),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 30),
-              // Type Tabs
-              Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: _types.asMap().entries.map((entry) {
-                    int index = entry.key;
-                    String type = entry.value;
-                    bool isSelected = _selectedType == index;
-
-                    return Expanded(
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedType = index;
-                          });
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          decoration: BoxDecoration(
-                            color: isSelected
-                                ? const Color(0xFF2196F3)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            type,
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected
-                                  ? Colors.white
-                                  : const Color(0xFF666666),
-                            ),
-                          ),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 30),
-              // Form
-              Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    // Category Dropdown
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: const Color(0xFFE0E0E0)),
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedCategory,
-                          isExpanded: true,
-                          items: _categories.map((category) {
-                            return DropdownMenuItem(
-                              value: category,
-                              child: Text(category),
-                            );
-                          }).toList(),
-                          onChanged: (value) {
-                            setState(() {
-                              _selectedCategory = value!;
-                            });
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Amount Field
-                    TextFormField(
-                      controller: _amountController,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Amount',
-                        prefixText: '\$ ',
-                        suffixIcon: TextButton(
-                          onPressed: () {
-                            _amountController.clear();
-                          },
-                          child: const Text('Clear'),
-                        ),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Please enter an amount';
-                        }
-                        if (double.tryParse(value) == null) {
-                          return 'Please enter a valid amount';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    // Date Field
-                    GestureDetector(
-                      onTap: _selectDate,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0xFFE0E0E0)),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              DateFormat(
-                                'EEE, dd MMM yyyy',
-                              ).format(_selectedDate),
-                              style: GoogleFonts.inter(
-                                fontSize: 16,
-                                color: const Color(0xFF333333),
-                              ),
-                            ),
-                            const Icon(
-                              Icons.calendar_today,
-                              color: Color(0xFF666666),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Notes Field
-                    TextFormField(
-                      controller: _notesController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: 'Notes',
-                        alignLabelWithHint: true,
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    // Save Button
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          if (_formKey.currentState!.validate()) {
-                            final amount = double.parse(_amountController.text);
-                            final isIncome = _selectedType == 0;
-                            final entry = TransactionEntry(
-                              isIncome: isIncome,
-                              amount: amount,
-                              category: _selectedCategory,
-                              notes: _notesController.text.trim(),
-                              date: _selectedDate,
-                            );
-                            await WalletNotifier.instance.addEntry(entry);
-                            // Show success message
-                            // ignore: use_build_context_synchronously
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  _selectedType == 0
-                                      ? 'Income added successfully!'
-                                      : 'Expense added successfully!',
-                                ),
-                                backgroundColor: const Color(0xFF4CAF50),
-                              ),
-                            );
-                            // ignore: use_build_context_synchronously
-                            Navigator.pop(context);
-                          }
-                        },
-                        child: Text(
-                          'Save',
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 30),
-              // Numeric Keypad
-              _buildNumericKeypad(),
-            ],
-          ),
+      backgroundColor: Colors.blue.shade50,
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
+        title: Text(
+          'Add Transaction',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
         ),
       ),
-    );
-  }
-
-  Future<void> _selectDate() async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-    );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
-  Widget _buildNumericKeypad() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
           ),
-        ],
-      ),
-      child: Column(
-        children: [
-          // Row 1: 1, 2, 3
-          Row(
-            children: [
-              _buildKeypadButton('1'),
-              _buildKeypadButton('2'),
-              _buildKeypadButton('3'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Row 2: 4, 5, 6
-          Row(
-            children: [
-              _buildKeypadButton('4'),
-              _buildKeypadButton('5'),
-              _buildKeypadButton('6'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Row 3: 7, 8, 9
-          Row(
-            children: [
-              _buildKeypadButton('7'),
-              _buildKeypadButton('8'),
-              _buildKeypadButton('9'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Row 4: ., 0, backspace
-          Row(
-            children: [
-              _buildKeypadButton('.'),
-              _buildKeypadButton('0'),
-              _buildKeypadButton('⌫', isBackspace: true),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildKeypadButton(String text, {bool isBackspace = false}) {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8),
-        height: 60,
-        child: ElevatedButton(
-          onPressed: () {
-            if (isBackspace) {
-              if (_amountController.text.isNotEmpty) {
-                _amountController.text = _amountController.text.substring(
-                  0,
-                  _amountController.text.length - 1,
-                );
-              }
-            } else {
-              _amountController.text += text;
-            }
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: const Color(0xFF333333),
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SegmentedButton<TransactionType>(
+                  segments: const [
+                    ButtonSegment(
+                      value: TransactionType.income,
+                      label: Text('Income'),
+                      icon: Icon(Icons.arrow_downward_rounded),
+                    ),
+                    ButtonSegment(
+                      value: TransactionType.expense,
+                      label: Text('Expense'),
+                      icon: Icon(Icons.arrow_upward_rounded),
+                    ),
+                  ],
+                  selected: {_type},
+                  onSelectionChanged: (s) => setState(() => _type = s.first),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: _selectedCategory,
+                  decoration: InputDecoration(
+                    labelText: 'Category',
+                    helperText:
+                        _type == TransactionType.expense &&
+                            _budgetLimits[_selectedCategory]! > 0
+                        ? 'Budget limit: ${formatCurrency(_budgetLimits[_selectedCategory]!)}'
+                        : null,
+                    helperMaxLines: 2,
+                  ),
+                  items: _categories.map((cat) {
+                    return DropdownMenuItem(value: cat, child: Text(cat));
+                  }).toList(),
+                  onChanged: (val) => setState(
+                    () => _selectedCategory = val ?? _categories.first,
+                  ),
+                  validator: (v) => v == null ? 'Select category' : null,
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _amountCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Amount',
+                    prefixIcon: Icon(Icons.currency_rupee),
+                  ),
+                  validator: (v) {
+                    final d = double.tryParse(v?.trim() ?? '');
+                    if (d == null || d <= 0) return 'Enter valid amount';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _feeCtrl,
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: 'Fee (optional)',
+                    hintText: '0',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _counterpartyCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'From/To (optional)',
+                    prefixIcon: Icon(Icons.person),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextFormField(
+                  controller: _notesCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Notes (optional)',
+                    prefixIcon: Icon(Icons.note),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Date & Time'),
+                  subtitle: Text(
+                    DateFormat('EEE, dd MMM yyyy • hh:mm a').format(_dateTime),
+                  ),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.calendar_month),
+                    onPressed: _pickDateTime,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: _submit,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.blue,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: Text(
+                      'Save',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ),
-          child: Text(
-            text,
-            style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w600),
           ),
         ),
       ),

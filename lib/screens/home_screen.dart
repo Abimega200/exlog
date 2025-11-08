@@ -1,27 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-// ignore: unused_import
+import 'package:provider/provider.dart';
 import '../screens/transaction_details_screen.dart';
-import '../state/wallet_notifier.dart';
+import '../state/transaction_provider.dart';
+import '../state/profile_provider.dart';
+import '../models/transaction.dart';
+import '../utils/format.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends State<HomeScreen> {
-  final _notifier = WalletNotifier.instance;
-
-  @override
-  void initState() {
-    super.initState();
-    _notifier.refresh();
-  }
-
-  @override
   Widget build(BuildContext context) {
+    final provider = context.watch<TransactionProvider>();
+    final profileProvider = context.watch<ProfileProvider>();
+    final transactions = provider.transactions;
+
+    // Calculate totals
+    double totalIncome = 0;
+    double totalExpense = 0;
+    for (final tx in transactions) {
+      if (tx.type == TransactionType.income) {
+        totalIncome += tx.amount;
+      } else {
+        totalExpense += tx.amount;
+      }
+    }
+    final totalBalance = totalIncome - totalExpense;
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
@@ -45,7 +51,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       Text(
-                        'Enjelin Morgeana',
+                        profileProvider.name,
                         style: GoogleFonts.inter(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -76,16 +82,8 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 30),
               // Balance Summary Card (dynamic)
-              StreamBuilder<WalletState>(
-                stream: _notifier.stream,
-                builder: (context, snapshot) {
-                  final state = snapshot.data ?? const WalletState(
-                    budget: 0,
-                    totalIncome: 0,
-                    totalExpense: 0,
-                  );
-                  final totalBalance = state.totalIncome - state.totalExpense;
-                  return Container(
+              Container(
+                
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -122,7 +120,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Expanded(
                               child: _buildBalanceItem(
                                 'Income',
-                                '₹${state.totalIncome.toStringAsFixed(2)}',
+                            '₹${totalIncome.toStringAsFixed(2)}',
                                 Icons.trending_up,
                                 const Color(0xFF4CAF50),
                               ),
@@ -131,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             Expanded(
                               child: _buildBalanceItem(
                                 'Expenses',
-                                '₹${state.totalExpense.toStringAsFixed(2)}',
+                            '₹${totalExpense.toStringAsFixed(2)}',
                                 Icons.trending_down,
                                 const Color(0xFFF44336),
                               ),
@@ -140,8 +138,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
-                  );
-                },
               ),
               const SizedBox(height: 30),
               // Transactions History Header
@@ -157,7 +153,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/history');
+                    },
                     child: Text(
                       'See all',
                       style: GoogleFonts.inter(
@@ -217,50 +215,47 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   List<Widget> _buildTransactionList(BuildContext context) {
-    final transactions = [
-      {
-        'icon': Icons.work_outline,
-        'title': 'Upwork',
-        'date': 'Jan 15, 2022',
-        'amount': '+ \$850.00',
-        'isIncome': true,
-      },
-      {
-        'icon': Icons.account_balance_wallet_outlined,
-        'title': 'Paypal',
-        'date': 'Jan 14, 2022',
-        'amount': '+ \$1,406.00',
-        'isIncome': true,
-      },
-      {
-        'icon': Icons.play_circle_outline,
-        'title': 'Youtube',
-        'date': 'Jan 13, 2022',
-        'amount': '- \$11.00',
-        'isIncome': false,
-      },
-    ];
+    final provider = Provider.of<TransactionProvider>(context, listen: false);
+    final transactions = provider.transactions
+        .take(5)
+        .toList(); // Show only first 5
 
-    return transactions.map((transaction) {
-      return GestureDetector(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TransactionDetailsScreen(
-                isIncome: transaction['isIncome'] as bool,
-                amount: transaction['amount'] as String,
-                title: transaction['title'] as String,
-                fromTo: transaction['isIncome'] as bool
-                    ? 'Upwork Escrow'
-                    : 'Claire Jkwaki',
-                date: DateTime(2022, 2, 28),
-                time: transaction['isIncome'] as bool ? '10:00 AM' : '04:00 PM',
-                earnings: transaction['isIncome'] as bool ? 870.0 : 85.0,
-                fee: transaction['isIncome'] as bool ? 20.0 : 0.0,
-                total: transaction['isIncome'] as bool ? 850.0 : 85.0,
+    if (transactions.isEmpty) {
+      return [
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Center(
+            child: Text(
+              'No transactions yet',
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                color: const Color(0xFF666666),
               ),
             ),
+          ),
+        ),
+    ];
+    }
+
+    return transactions.map((tx) {
+      final isIncome = tx.type == TransactionType.income;
+      final color = isIncome
+          ? const Color(0xFF4CAF50)
+          : const Color(0xFFF44336);
+      final icon = isIncome
+          ? Icons.arrow_downward_rounded
+          : Icons.arrow_upward_rounded;
+
+      return GestureDetector(
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            TransactionDetailsScreen.routeName,
+            arguments: tx.id,
           );
         },
         child: Container(
@@ -282,14 +277,10 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2196F3).withValues(alpha: 0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  transaction['icon'] as IconData,
-                  color: const Color(0xFF2196F3),
-                  size: 24,
-                ),
+                child: Icon(icon, color: color, size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -297,7 +288,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      transaction['title'] as String,
+                      tx.category,
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -306,7 +297,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      transaction['date'] as String,
+                      formatDateTime(tx.dateTime),
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: const Color(0xFF666666),
@@ -319,23 +310,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    transaction['amount'] as String,
+                    (isIncome ? '+' : '-') + formatCurrency(tx.amount),
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
-                      color: transaction['isIncome'] as bool
-                          ? const Color(0xFF4CAF50)
-                          : const Color(0xFFF44336),
+                      color: color,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Icon(
-                    transaction['isIncome'] as bool
-                        ? Icons.trending_up
-                        : Icons.trending_down,
-                    color: transaction['isIncome'] as bool
-                        ? const Color(0xFF4CAF50)
-                        : const Color(0xFFF44336),
+                    isIncome ? Icons.trending_up : Icons.trending_down,
+                    color: color,
                     size: 16,
                   ),
                 ],
@@ -346,8 +331,4 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }).toList();
   }
-}
-
-// ignore: non_constant_identifier_names
-TransactionDetailsScreen({required bool isIncome, required String amount, required String title, required String fromTo, required DateTime date, required String time, required double earnings, required double fee, required double total}) {
 }

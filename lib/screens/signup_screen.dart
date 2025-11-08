@@ -37,42 +37,47 @@ class _SignupScreenState extends State<SignupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
-              // Back button and header
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Create account',
-                    style: GoogleFonts.inter(
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF333333),
-                    ),
-                  ),
-                ],
+              // Back button
+              IconButton(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back_ios),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Join us to get started',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  color: const Color(0xFF666666),
-                ),
-              ),
-              const SizedBox(height: 40),
-              // Blue wave decoration
+              const SizedBox(height: 20),
+              // Blue header
               Container(
-                height: 100,
+                height: 120,
                 decoration: const BoxDecoration(
                   color: Color(0xFF2196F3),
                   borderRadius: BorderRadius.only(
                     bottomLeft: Radius.circular(30),
                     bottomRight: Radius.circular(30),
                   ),
+                ),
+                alignment: Alignment.topCenter,
+                padding: const EdgeInsets.only(top: 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Create account',
+                      style: GoogleFonts.inter(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Join us to get started',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 40),
@@ -234,5 +239,3 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 }
-
-
