@@ -1,0 +1,14 @@
+[
+  {
+    "id": 1,
+    "message": "Initial sample log entry",
+    "createdAt": "2025-11-11T05:58:38Z",
+    "level": "info"
+  },
+  {
+    "id": 2,
+    "message": "Second sample entry",
+    "createdAt": "2025-11-11T05:58:38Z",
+    "level": "warning"
+  }
+]
