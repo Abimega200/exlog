@@ -7,7 +7,8 @@ class DeleteAccountScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+
+ backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
@@ -66,7 +67,7 @@ class DeleteAccountScreen extends StatelessWidget {
                       const SizedBox(height: 16),
                       // Name
                       Text(
-                        'Enjelin Morgeana',
+                        'Abi',
                         style: GoogleFonts.inter(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -76,7 +77,7 @@ class DeleteAccountScreen extends StatelessWidget {
                       const SizedBox(height: 8),
                       // Handle
                       Text(
-                        '@enjelin.morgeana',
+                        'abi',
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           color: const Color(0xFF666666),

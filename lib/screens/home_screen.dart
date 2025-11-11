@@ -44,7 +44,7 @@ class HomeScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Good afternoon,',
+                        'Welcome,',
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           color: const Color(0xFF666666),

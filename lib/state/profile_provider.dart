@@ -6,9 +6,9 @@ class ProfileProvider extends ChangeNotifier {
   static const String _emailKey = 'user_email';
   static const String _usernameKey = 'user_username';
 
-  String _name = 'Enjelin Morgeana';
-  String _email = 'enjelin.morgeana@example.com';
-  String _username = '@enjelin.morgeana';
+  String _name = 'Abi';
+  String _email = 'abi@gmail.com';
+  String _username = 'Abi';
 
   String get name => _name;
   String get email => _email;
@@ -20,9 +20,9 @@ class ProfileProvider extends ChangeNotifier {
 
   Future<void> _loadProfile() async {
     final prefs = await SharedPreferences.getInstance();
-    _name = prefs.getString(_nameKey) ?? 'Enjelin Morgeana';
-    _email = prefs.getString(_emailKey) ?? 'enjelin.morgeana@example.com';
-    _username = prefs.getString(_usernameKey) ?? '@enjelin.morgeana';
+    _name = prefs.getString(_nameKey) ?? 'Abi';
+    _email = prefs.getString(_emailKey) ?? 'abi@gmail.com';
+    _username = prefs.getString(_usernameKey) ?? 'Abi';
     notifyListeners();
   }
 
